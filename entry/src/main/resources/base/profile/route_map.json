@@ -1,0 +1,12 @@
+{
+  "routerMap": [
+    {
+      "name": "CitySearchPage",
+      "pageSourceFile": "src/main/ets/pages/CitySearchPage.ets",
+      "buildFunction": "CitySearchPageBuilder",
+      "data": {
+        "description" : "this is CitySearchPage"
+      }
+    }
+  ]
+}

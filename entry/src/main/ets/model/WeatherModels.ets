@@ -31,3 +31,37 @@ export const initialNowWeatherData: NowWeatherData = {
   pressure: '--',
   vis: '--'
 };
+
+// 定义“单日预报”的数据结构，对应 daily 数组中的一个元素
+export interface DailyForecast {
+  fxDate: string;   // 预报日期
+  tempMax: string;  // 最高温度
+  tempMin: string;  // 最低温度
+  iconDay: string;  // 白天天气图标代码
+  textDay: string;  // 白天天气文字描述
+}
+
+// 定义“n天预报 API”的完整响应结构
+export interface ForecastApiResponse {
+  code: string;
+  daily: DailyForecast[]; // 核心数据是一个 DailyForecast 类型的数组
+}
+
+// 定义单个城市位置的数据结构
+export interface CityLocation {
+  name: string; // 地区/城市名称
+  id: string;   // 地区/城市ID
+  adm1: string; // 该地区/城市的上级行政区划，例如“北京市”
+  adm2: string; // 该地区/城市的上级行政区划，例如“朝阳区”
+}
+
+// 定义城市搜索 API 的完整响应结构
+export interface CityLookupApiResponse {
+  code: string;
+  location: CityLocation[]; // 核心数据是一个 CityLocation 类型的数组
+}
+
+export interface CurrentCityInfo{
+  id:string,
+  name:string
+}
