@@ -33,7 +33,7 @@ struct CitySearchPage {
     let httpRequest = http.createHttp();
     // 使用 encodeURIComponent 对用户输入进行编码，防止中文或特殊字符出错
     // const url = `${QWEATHER_CITY_LOOKUP_URL}?location=${encodeURIComponent(this.searchText)}&key=${QWEATHER_API_KEY}`;
-    const url = `${QWEATHER_CITY_LOOKUP_URL}?location=${this.searchText}&key=${QWEATHER_API_KEY}`;
+    const url = `${QWEATHER_CITY_LOOKUP_URL}?location=${this.searchText}&number=20&key=${QWEATHER_API_KEY}`;
 
     try {
       const response = await httpRequest.request(url);
@@ -49,6 +49,13 @@ struct CitySearchPage {
           }
 
         }
+      }else if (response.responseCode === 400) {
+        // 业务码为 "404"，明确代表“查询的地区不存在”
+        // 这是我们之前一直没处理到的关键情况！
+        promptAction.openToast({ message: '未找到相关城市' });
+      }else {
+        // 处理其他所有业务错误，例如 401 (Key无效), 403 (无权限) 等
+        promptAction.openToast({ message: `搜索失败，API错误: ${response.responseCode}` });
       }
     } catch (err) {
       console.error("Search city error: ", err);

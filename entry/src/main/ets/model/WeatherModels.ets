@@ -65,3 +65,17 @@ export interface CurrentCityInfo{
   id:string,
   name:string
 }
+
+// 定义“单小时预报”的数据结构
+export interface HourlyForecast {
+  fxTime: string; // 预报时间
+  temp: string;   // 温度
+  icon: string;   // 天气图标代码
+  text: string;   // 天气文字描述
+}
+
+// 定义“逐小时预报API”的完整响应结构
+export interface HourlyApiResponse {
+  code: string;
+  hourly: HourlyForecast[];
+}
