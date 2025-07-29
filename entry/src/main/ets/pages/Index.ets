@@ -18,6 +18,8 @@ import { geoLocationManager } from '@kit.LocationKit';
 import {
   ability, abilityAccessCtrl, common, PermissionRequestResult, Permissions, Want} from '@kit.AbilityKit';
 import { PermissionDialog } from '../view/PermissionDialog';
+import { saveCityToPreferences } from '../utils/PreferencesUtil';
+import { getWeatherGradientColors } from '../utils/StyleProvider';
 
 
 @Entry
@@ -29,6 +31,7 @@ struct Index {
   @State hourlyForecasts: HourlyForecast[] = []; // 新增：存储逐小时预报数据
   @State updateTime: string = ''; // <-- 新增：用于存储格式化后的更新时间
   @State isRefreshing: boolean = false; // <-- 新增：控制刷新动画的显示状态
+  @State backgroundColors: [string, number][] = getWeatherGradientColors('100');
   @StorageLink('currentcity')
   @Watch('onCityChange')
   currentCity: CurrentCityInfo = { id: '101010100', name: '北京' };
@@ -84,6 +87,7 @@ struct Index {
           // 成功！将获取到的 now 对象，更新到 @State 变量上
           // UI 会自动刷新！
           this.nowWeather = result.now;
+          this.backgroundColors = getWeatherGradientColors(this.nowWeather.icon);
           console.info('Weather data updated successfully.');
           this.updateTime = formatTime(new Date());
         } else {
@@ -262,10 +266,22 @@ struct Index {
       promptAction.showToast({ message: "无法打开设置页面" });
     }
   }
-  onCityChange() {
+
+  async onCityChange() {
     this.getweather();
     this.get3dForecast();
     this.get24hForecast();
+    //持久化保存城市信息
+    try {
+      // 1. 在需要时，动态获取当前页面的上下文
+      let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      if (context) {
+        // 2. 将上下文作为参数，传递给我们的工具函数
+        await saveCityToPreferences(context, this.currentCity);
+      }
+    } catch (e) {
+      console.error("在 onCityChange 中保存城市失败", e);
+    }
   }
 
 
@@ -273,7 +289,7 @@ struct Index {
     // 用 Refresh 组件包裹最外层的 Column
     Navigation(this.pageStack){
       Refresh({refreshing:this.isRefreshing,promptText:'正在加载中...'}) {
-        Column() {
+        Column({space:10}) {
           //第一部分的实时天气
           Column(){
             Row(){
@@ -350,13 +366,13 @@ struct Index {
 
             }
             .borderRadius(20)
-            .backgroundColor('#ffb9bfcc')
+            .backgroundColor('#ffd2dbf0')
             .padding(20)
+            .margin({top:10})
           }
           .borderRadius(20)
-          .backgroundColor('#ffd2dbf0')
-          .padding(20)
-          .margin(10)
+          // .backgroundColor('#ffd2dbf0')
+          .padding(10)
 
           //中间的24h天气预报
           Column() {
@@ -438,6 +454,12 @@ struct Index {
       })
     }
     .mode(NavigationMode.Stack)
+    .hideTitleBar(true)
+    .linearGradient({
+      direction: GradientDirection.Bottom, // GradientDirection 是全局可用的，不需要import
+      colors: this.backgroundColors
+    })
+
   }
 
 
