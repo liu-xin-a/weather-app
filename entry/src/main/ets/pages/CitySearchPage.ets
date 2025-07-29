@@ -21,7 +21,7 @@ struct CitySearchPage {
    */
   async searchCity() {
     if (!this.searchText) {
-      promptAction.openToast({
+      promptAction.showToast({
         message:'请输入城市名称',
         duration:2000
       })
@@ -42,7 +42,7 @@ struct CitySearchPage {
         if (result.code === '200') {
           this.searchResults = result.location; // 更新搜索结果列表
           if (this.searchResults.length === 0) {
-            promptAction.openToast({
+            promptAction.showToast({
               message:'未找到相关城市',
               duration:2000
             })
@@ -52,14 +52,14 @@ struct CitySearchPage {
       }else if (response.responseCode === 400) {
         // 业务码为 "404"，明确代表“查询的地区不存在”
         // 这是我们之前一直没处理到的关键情况！
-        promptAction.openToast({ message: '未找到相关城市' });
+        promptAction.showToast({ message: '未找到相关城市' });
       }else {
         // 处理其他所有业务错误，例如 401 (Key无效), 403 (无权限) 等
-        promptAction.openToast({ message: `搜索失败，API错误: ${response.responseCode}` });
+        promptAction.showToast({ message: `搜索失败，API错误: ${response.responseCode}` });
       }
     } catch (err) {
       console.error("Search city error: ", err);
-      promptAction.openToast({
+      promptAction.showToast({
         message:'搜索失败，请检查网络',
         duration:2000
       })

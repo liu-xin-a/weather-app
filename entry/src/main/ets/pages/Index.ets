@@ -181,11 +181,11 @@ struct Index {
       if (permissionResult.authResults[locationPermissionIndex] === 0) {
         // --- 权限被授予 ---
         console.log("定位权限已被授予。");
-        promptAction.openToast({ message: "正在获取当前位置..." });
+        promptAction.showToast({ message: "正在获取当前位置..." });
 
         let isLocationEnabled = await geoLocationManager.isLocationEnabled();
         if (!isLocationEnabled) {
-          promptAction.openToast({ message: "请在系统中开启定位服务" });
+          promptAction.showToast({ message: "请在系统中开启定位服务" });
           return;
         }
 
@@ -197,14 +197,14 @@ struct Index {
       } else {
         // --- 权限被拒绝 ---
         console.warn("定位权限被用户拒绝。");
-        promptAction.openToast({ message: "您拒绝了定位授权，无法获取位置" });
+        promptAction.showToast({ message: "您拒绝了定位授权，无法获取位置" });
         this.permissionDialogController.open();
 
       }
 
     } catch (error) {
       console.error('定位过程中发生异常：' + JSON.stringify(error));
-      promptAction.openToast({ message: "定位失败，请稍后重试" });
+      promptAction.showToast({ message: "定位失败，请稍后重试" });
     }
   }
   async getCityInfoByCoords(longitude: number, latitude: number) {
@@ -226,11 +226,11 @@ struct Index {
 
           // 5. 关键一步：更新全局AppStorage，触发@Watch和天气刷新！
           AppStorage.set<CurrentCityInfo>('currentcity',newCity);
-          promptAction.openToast({ message: `已切换到 ${newCity.name}` });
+          promptAction.showToast({ message: `已切换到 ${newCity.name}` });
 
         } else {
           // API业务失败
-          promptAction.openToast({ message: `无法识别当前位置，错误码: ${result.code}` });
+          promptAction.showToast({ message: `无法识别当前位置，错误码: ${result.code}` });
         }
       }
     } catch (err) {
@@ -244,7 +244,7 @@ struct Index {
       let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
       // 获取当前应用的包名，这是它的唯一“身份证”
       let bundleName = 'com.example.weatherapp';
-      promptAction.openToast({ message: "“去设置”按钮被点击了！" });
+      promptAction.showToast({ message: "“去设置”按钮被点击了！" });
 
       // 创建一个“意图(Want)”对象，它像一个要去特定地方的“信使”
       let want: Want = {
@@ -259,7 +259,7 @@ struct Index {
 
     } catch (error) {
       console.error("跳转到应用设置失败", JSON.stringify(error));
-      promptAction.openToast({ message: "无法打开设置页面" });
+      promptAction.showToast({ message: "无法打开设置页面" });
     }
   }
   onCityChange() {
@@ -437,6 +437,7 @@ struct Index {
         this.handleRefresh();
       })
     }
+    .mode(NavigationMode.Stack)
   }
 
 

@@ -1,12 +1,26 @@
 {
   "app": {
-    "signingConfigs": [],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:\\Users\\9022\\.ohos\\config\\default_weather-app_Fy6crULpPF1dLxYhdajLUsfB9fVhyQqy8xcxHKnheYM=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B7CCE69341BD598759BB391758DFA45C6F4834A1E55AEAF1A497DD1D8287068C76F32C66974DCE7",
+          "profile": "C:\\Users\\9022\\.ohos\\config\\default_weather-app_Fy6crULpPF1dLxYhdajLUsfB9fVhyQqy8xcxHKnheYM=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\9022\\.ohos\\config\\default_weather-app_Fy6crULpPF1dLxYhdajLUsfB9fVhyQqy8xcxHKnheYM=.p12",
+          "storePassword": "0000001B610E01689E8194FE91EEE219011C5999F98C63C144CB96F18636DADA7741BC162A29951E94E337"
+        }
+      }
+    ],
     "products": [
       {
         "name": "default",
         "signingConfig": "default",
-        "targetSdkVersion": "5.1.0(18)",
-        "compatibleSdkVersion": "5.1.0(18)",
+        "targetSdkVersion": "5.0.5(17)",
+        "compatibleSdkVersion": "5.0.5(17)",
         "runtimeOS": "HarmonyOS",
         "buildOption": {
           "strictMode": {
