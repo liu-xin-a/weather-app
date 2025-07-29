@@ -20,6 +20,7 @@ import {
 import { PermissionDialog } from '../view/PermissionDialog';
 import { saveCityToPreferences } from '../utils/PreferencesUtil';
 import { getWeatherGradientColors } from '../utils/StyleProvider';
+import { loadWeatherCache, saveWeatherCache } from '../utils/CacheUtil';
 
 
 @Entry
@@ -32,6 +33,8 @@ struct Index {
   @State updateTime: string = ''; // <-- 新增：用于存储格式化后的更新时间
   @State isRefreshing: boolean = false; // <-- 新增：控制刷新动画的显示状态
   @State backgroundColors: [string, number][] = getWeatherGradientColors('100');
+  @State cacheInfoMessage: string = ''; // 用于显示离线模式“数据更新于X分钟前”
+
   @StorageLink('currentcity')
   @Watch('onCityChange')
   currentCity: CurrentCityInfo = { id: '101010100', name: '北京' };
@@ -66,6 +69,7 @@ struct Index {
     this.get24hForecast();
   }
   async getweather(){
+    let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
     //this.currentCity = AppStorage.get<CurrentCityInfo>('currentcity')!
     // 创建 http request 实例
     let httpRequest = http.createHttp()
@@ -90,6 +94,10 @@ struct Index {
           this.backgroundColors = getWeatherGradientColors(this.nowWeather.icon);
           console.info('Weather data updated successfully.');
           this.updateTime = formatTime(new Date());
+          this.cacheInfoMessage = ''; // 清空离线提示
+          // 将成功获取的数据存入缓存
+          await saveWeatherCache(context, 'now_weather', result.now);
+          return; // 成功后直接退出函数
         } else {
           // API 返回了错误信息，例如key不正确
           console.error(`Weather API Error: ${result.code}`);
@@ -100,14 +108,21 @@ struct Index {
         console.error(`Http request failed, code: ${response.responseCode}`);
       }
     } catch (err) {
-      // 其他异常，例如网络不通
-      console.error(`Http request error: ${JSON.stringify(err)}`);
+      console.error("获取实时天气失败，尝试从缓存加载...", err);
+      const cachedData = await loadWeatherCache<NowWeatherData>(context, 'now_weather');
+      if (cachedData) {
+        this.nowWeather = cachedData.data;
+        // 计算缓存时间并显示提示
+        const minutesAgo = Math.round((Date.now() - cachedData.timestamp) / 60000);
+        this.cacheInfoMessage = `离线模式：数据更新于${minutesAgo}分钟前`;
+      }
     } finally {
       // 无论成功失败，最后都销毁请求实例，释放资源
       httpRequest.destroy();
     }
   }
   async get3dForecast() {
+    let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
     // 这个函数结构和 getweather 几乎一模一样
     let httpRequest = http.createHttp();
     // 注意！URL现在是 QWEATHER_3D_URL
@@ -118,9 +133,12 @@ struct Index {
       if (response.responseCode === 200) {
         const result = JSON.parse(response.result as string) as ForecastApiResponse;
         if (result.code === '200') {
+          console.info('3-day forecast updated successfully.');
           // 当数据获取成功，更新存储预报数据的 State 变量
           this.forecastDays = result.daily;
-          console.info('7-day forecast updated successfully.');
+          // 将成功获取的数据存入缓存
+          await saveWeatherCache(context, '3d_forecast', result.daily);
+          return; // 成功后直接退出
         } else {
           console.error(`Forecast API Error: ${result.code}`);
         }
@@ -128,26 +146,42 @@ struct Index {
         console.error(`Forecast http request failed, code: ${response.responseCode}`);
       }
     } catch (err) {
-      // ... 错误处理 ...
-      console.error('Forecast request caught an error.', err);
+      // --- 网络失败，启动备用方案 ---
+      console.error("获取3日预报失败，尝试从缓存加载...", err);
+      const cachedData = await loadWeatherCache<DailyForecast[]>(context, '3d_forecast');
+      if (cachedData) {
+        this.forecastDays = cachedData.data;
+      }
     } finally {
       httpRequest.destroy();
     }
   }
   async get24hForecast() {
-    let httpRequest = http.createHttp();
+    let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
     const url = `${QWEATHER_24H_URL}?location=${this.currentCity.id}&key=${QWEATHER_API_KEY}`;
+    let httpRequest = http.createHttp();
+
     try {
       const response = await httpRequest.request(url);
       if (response.responseCode === 200) {
         const result = JSON.parse(response.result as string) as HourlyApiResponse;
         if (result.code === '200') {
+          // --- 网络成功 ---
           this.hourlyForecasts = result.hourly;
-          console.info('Hourly forecast updated successfully.');
+          // 将成功获取的数据存入缓存
+          await saveWeatherCache(context, '24h_forecast', result.hourly);
+          return; // 成功后直接退出
         }
       }
+      throw new Error(`API or HTTP Error for 24h forecast`);
+
     } catch (err) {
-      console.error('Hourly forecast request failed.', err);
+      // --- 网络失败，启动备用方案 ---
+      console.error("获取逐小时预报失败，尝试从缓存加载...", err);
+      const cachedData = await loadWeatherCache<HourlyForecast[]>(context, '24h_forecast');
+      if (cachedData) {
+        this.hourlyForecasts = cachedData.data;
+      }
     } finally {
       httpRequest.destroy();
     }
@@ -308,7 +342,18 @@ struct Index {
                 .onClick(()=>{
                   this.pageStack.pushPath({name:'CitySearchPage'});
                 })
-              Text(`更新于${this.updateTime}`)
+              if (this.cacheInfoMessage) {
+                // 如果有离线信息，就显示它
+                Text(this.cacheInfoMessage)
+                  .fontSize(12)
+                  .fontColor(Color.White)
+                  .backgroundColor(Color.Red) // 用醒目的颜色提醒用户
+                  .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                  .borderRadius(4)
+              } else {
+                // 否则，正常显示在线更新时间
+                Text(`更新于${this.updateTime}`)
+              }
             }
             .width('100%')
             .justifyContent(FlexAlign.SpaceBetween)
