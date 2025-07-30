@@ -13,3 +13,7 @@ export const QWEATHER_7D_URL = 'https://m8759fctv8.re.qweatherapi.com/v7/weather
 export const QWEATHER_CITY_LOOKUP_URL = 'https://m8759fctv8.re.qweatherapi.com/geo/v2/city/lookup';
 //逐小时天气的api
 export const QWEATHER_24H_URL = 'https://m8759fctv8.re.qweatherapi.com/v7/weather/24h';
+//空气质量的api
+export const QWEATHER_AIR_NOW_URL = 'https://m8759fctv8.re.qweatherapi.com/v7/air/now';
+//生活指数的api
+export const QWEATHER_INDICES_1D_URL = 'https://m8759fctv8.re.qweatherapi.com/v7/indices/1d';

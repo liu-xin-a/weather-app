@@ -79,3 +79,29 @@ export interface HourlyApiResponse {
   code: string;
   hourly: HourlyForecast[];
 }
+// 定义“实时空气质量”的数据结构
+export interface AirQualityNow {
+  aqi: string;      // AQI
+  category: string; // 类别，如“优”、“良”
+  pm2p5: string;    // PM2.5
+  pm10: string;     // PM10
+}
+
+// 定义“空气质量API”的完整响应结构
+export interface AirQualityApiResponse {
+  code: string;
+  now: AirQualityNow;
+}
+
+// 定义“单项生活指数”的数据结构
+export interface LivingIndex {
+  name: string;     // 指数名称，如“穿衣指数”
+  category: string; // 级别，如“舒适”
+  text: string;     // 详细描述
+}
+
+// 定义“生活指数API”的完整响应结构
+export interface IndicesApiResponse {
+  code: string;
+  daily: LivingIndex[];
+}
