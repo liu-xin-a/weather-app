@@ -18,7 +18,7 @@ import { geoLocationManager } from '@kit.LocationKit';
 import {
   ability, abilityAccessCtrl, common, PermissionRequestResult, Permissions, Want} from '@kit.AbilityKit';
 import { PermissionDialog } from '../view/PermissionDialog';
-import { saveCityToPreferences } from '../utils/PreferencesUtil';
+import { loadCityFromPreferences, saveCityToPreferences } from '../utils/PreferencesUtil';
 import { getWeatherGradientColors } from '../utils/StyleProvider';
 import { loadWeatherCache, saveWeatherCache } from '../utils/CacheUtil';
 
@@ -56,7 +56,18 @@ struct Index {
     alignment: DialogAlignment.Center, // 居中显示
     customStyle: true // 关键！设为 true 才能让我们自己的样式生效
   });
-  aboutToAppear(): void {
+
+  async aboutToAppear(): Promise<void> {
+    // 1. 在加载UI之前，先尝试从闪存加载城市数据
+    let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    const savedCity = await loadCityFromPreferences(context);
+
+    // 2. 如果成功加载，就用它覆盖 AppStorage 中的默认值
+    if(savedCity) {
+      // 这里的键名 'currentcity' 必须和您主页中 @StorageLink('currentcity') 的完全一致！
+      AppStorage.set<CurrentCityInfo>('currentcity',savedCity);
+      console.info("成功设置了城市信息:", JSON.stringify(savedCity));
+    }
     // 在组件中获取 UIContext
     let uiContext: UIContext = this.getUIContext();
     // 注册字体

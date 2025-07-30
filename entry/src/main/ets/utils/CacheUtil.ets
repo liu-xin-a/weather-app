@@ -1,5 +1,5 @@
 
-import preferences from '@ohos.data.preferences';
+import { preferences } from '@kit.ArkData';
 import { common } from '@kit.AbilityKit';
 
 // 为我们的缓存数据定义一个统一的“包装盒”结构
@@ -9,10 +9,10 @@ interface WeatherCache<T> {
   timestamp: number; // 存入时的时间戳 (毫秒)
 }
 
-const PREF_FILE_NAME = 'weather_cache'; // 专门为缓存创建一个独立的文件
+const PREF_FILE_NAME1 = 'weather_cache'; // 专门为缓存创建一个独立的文件
 // 获取 preferences 实例的辅助函数
 async function getCachePreferences(context: common.Context): Promise<preferences.Preferences> {
-  return await preferences.getPreferences(context, PREF_FILE_NAME);
+  return await preferences.getPreferences(context, PREF_FILE_NAME1);
 }
 
 /**
