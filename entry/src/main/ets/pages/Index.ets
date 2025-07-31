@@ -29,7 +29,6 @@ import { PermissionDialog } from '../view/PermissionDialog';
 import { loadCityFromPreferences, saveCityToPreferences } from '../utils/PreferencesUtil';
 import { getWeatherGradientColors } from '../utils/StyleProvider';
 import { loadWeatherCache, saveWeatherCache } from '../utils/CacheUtil';
-import { CitySearchPageBuilder } from './CitySearchPage';
 
 
 @Entry
@@ -45,8 +44,6 @@ struct Index {
   @State cacheInfoMessage: string = ''; // 用于显示离线模式“数据更新于X分钟前”
   @State airQuality: AirQualityNow | null = null; // 新增：存储空气质量数据
   @State livingIndices: LivingIndex[] = [];      // 新增：存储生活指数数据
-
-
   @StorageLink('currentcity')
   @Watch('onCityChange')
   currentCity: CurrentCityInfo = { id: '101010100', name: '北京' };
@@ -212,67 +209,71 @@ struct Index {
     }
   }
   async getAirQuality() {
-    const TAG = "WEATHER_DEBUG [AQI]";
     let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
     let httpRequest = http.createHttp();
     const url = `${QWEATHER_AIR_NOW_URL}?location=${this.currentCity.id}&key=${QWEATHER_API_KEY}`;
-    console.info(`${TAG}: ===== 开始请求空气质量 =====`);
+
+    // 为了让缓存键名与城市关联，我们把城市ID也加进去
+    const cacheKey = `air_quality_${this.currentCity.id}`;
 
     try {
       const response = await httpRequest.request(url);
       if (response.responseCode === 200) {
         const result = JSON.parse(response.result as string) as AirQualityApiResponse;
-
-        // --- 这是我们唯一的、最终的探针 ---
-        console.info(`${TAG}: ===== 最终数据检查 =====`);
-        console.info(`${TAG}: 即将被赋值的 result.now 对象是: ${JSON.stringify(result.now)}`);
-        // --- 探针结束 ---
-
-        if (result.code === '200' && result.now) { // 增加对 result.now 的存在性检查
+        if (result.code === '200' && result.now) {
+          // --- 网络成功 ---
+          console.info("[AQI] 成功从网络获取空气质量数据。");
           this.airQuality = result.now;
-          await saveWeatherCache(context, `air_quality_${this.currentCity.id}`, result.now);
-        } else {
-          console.error(`${TAG}: 业务失败或result.now不存在！API Code: ${result.code}`);
+          // 将成功获取的数据存入缓存
+          await saveWeatherCache(context, cacheKey, result.now);
+          return; // 成功后直接退出
         }
-      } else {
-        console.error(`${TAG}: HTTP请求失败！`);
       }
+      // 如果 responseCode 不是 200 或 result.code 不是 '200'，就抛出错误进入catch流程
+      throw new Error(`API or HTTP Error for Air Quality`);
+
     } catch (err) {
-      console.error(`${TAG}: 捕获到异常！`, err);
-      // ... 缓存逻辑 ...
+      // --- 网络失败，启动备用方案 ---
+      console.error("获取空气质量失败，尝试从缓存加载...", err);
+      const cachedData = await loadWeatherCache<AirQualityNow>(context, cacheKey);
+      if (cachedData) {
+        this.airQuality = cachedData.data;
+        console.info("[AQI] 成功从缓存加载空气质量数据。");
+      }
     } finally {
       httpRequest.destroy();
     }
   }
   async getLivingIndices() {
-    const TAG = "WEATHER_DEBUG [Indices]";
     let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
     let httpRequest = http.createHttp();
     const url = `${QWEATHER_INDICES_1D_URL}?location=${this.currentCity.id}&key=${QWEATHER_API_KEY}&type=0`;
-    console.info(`${TAG}: ===== 开始请求生活指数 =====`);
+
+    const cacheKey = `living_indices_${this.currentCity.id}`;
 
     try {
       const response = await httpRequest.request(url);
       if (response.responseCode === 200) {
         const result = JSON.parse(response.result as string) as IndicesApiResponse;
-
-        // --- 这是我们唯一的、最终的探针 ---
-        console.info(`${TAG}: ===== 最终数据检查 =====`);
-        console.info(`${TAG}: 即将被赋值的 result.daily 数组是: ${JSON.stringify(result.daily)}`);
-        // --- 探针结束 ---
-
-        if (result.code === '200' && result.daily) { // 增加对 result.daily 的存在性检查
+        if (result.code === '200' && result.daily) {
+          // --- 网络成功 ---
+          console.info("[Indices] 成功从网络获取生活指数数据。");
           this.livingIndices = result.daily;
-          await saveWeatherCache(context, `living_indices_${this.currentCity.id}`, result.daily);
-        } else {
-          console.error(`${TAG}: 业务失败或result.daily不存在！API Code: ${result.code}`);
+          // 将成功获取的数据存入缓存
+          await saveWeatherCache(context, cacheKey, result.daily);
+          return; // 成功后直接退出
         }
-      } else {
-        console.error(`${TAG}: HTTP请求失败！`);
       }
+      throw new Error(`API or HTTP Error for Living Indices`);
+
     } catch (err) {
-      console.error(`${TAG}: 捕获到异常！`, err);
-      // ... 缓存逻辑 ...
+      // --- 网络失败，启动备用方案 ---
+      console.error("获取生活指数失败，尝试从缓存加载...", err);
+      const cachedData = await loadWeatherCache<LivingIndex[]>(context, cacheKey);
+      if (cachedData) {
+        this.livingIndices = cachedData.data;
+        console.info("[Indices] 成功从缓存加载生活指数数据。");
+      }
     } finally {
       httpRequest.destroy();
     }
@@ -413,6 +414,7 @@ struct Index {
     }
   }
 
+  //构建空气质量的ui
   @Builder AirQualityCard() {
     // 使用 if 确保在有数据时才显示卡片
     if (this.airQuality) {
@@ -423,10 +425,8 @@ struct Index {
           .fontWeight(FontWeight.Medium)
           .width('100%')
           .textAlign(TextAlign.Start)
-
         // 分隔线
         Divider().color(Color.White).opacity(0.2).margin({ top: 5, bottom: 5 })
-
         // 内容区
         Row({ space: 15 }) {
           // 左侧：AQI指数和等级
@@ -446,30 +446,25 @@ struct Index {
           }
           .alignItems(HorizontalAlign.Center)
           .layoutWeight(1)
-
           // 右侧：污染物详情
-          Column({ space: 8 }) {
+          Column({ space: 15 }) {
             Text(`PM2.5: ${this.airQuality.pm2p5}`)
             Text(`PM10: ${this.airQuality.pm10}`)
           }
           .alignItems(HorizontalAlign.Start)
           .justifyContent(FlexAlign.Center)
-          .layoutWeight(1.2)
+          .layoutWeight(1)
         }
         .alignItems(VerticalAlign.Center)
         .width('100%')
       }
-      .width('100%')
       .padding(20)
       .borderRadius(20)
       .backgroundColor('#ffd2dbf0') // 使用半透明深色背景
-      .margin({ top: 10 })
+      .margin(10)
     }
   }
-
-  /**
-   * 构建“生活指数”卡片的UI
-   */
+   //构建“生活指数”卡片的UI
   @Builder LivingIndicesCard() {
     // 使用 if 确保在有数据时才显示卡片
     if (this.livingIndices.length > 0) {
@@ -479,9 +474,7 @@ struct Index {
           .fontWeight(FontWeight.Medium)
           .width('100%')
           .textAlign(TextAlign.Start)
-
         Divider().color(Color.White).opacity(0.2).margin({ top: 5, bottom: 5 })
-
         // 因为生活指数内容很多，我们只显示前几条核心的
         // ForEach 的第二个参数是 index，可以用来计数
         ForEach(this.livingIndices.slice(0, 5), (item: LivingIndex, index: number) => {
@@ -502,11 +495,10 @@ struct Index {
           }
         })
       }
-      .width('100%')
       .padding(20)
       .borderRadius(20)
       .backgroundColor('#ffd2dbf0')
-      .margin({ top: 10 })
+      .margin({left:10,right:10})
     }
   }
 
@@ -515,180 +507,185 @@ struct Index {
     // 用 Refresh 组件包裹最外层的 Column
     Navigation(this.pageStack){
       Refresh({refreshing:this.isRefreshing,promptText:'正在加载中...'}) {
-        Column({space:10}) {
-          //第一部分的实时天气
-          Column(){
-            Row(){
-              Row({space:10}){
-                Image($r('app.media.local_fill')) // 准备一个定位图标 ic_location_on.png
-                  .width(24).height(24)
-                  .onClick(() => {
-                    this.getLocation();
+        Scroll(){
+          Column({space:10}) {
+            //第一部分的实时天气
+            Column(){
+              Row(){
+                Row({space:10}){
+                  Image($r('app.media.local_fill')) // 准备一个定位图标 ic_location_on.png
+                    .width(24).height(24)
+                    .onClick(() => {
+                      this.getLocation();
+                    })
+                  Text(this.currentCity.name)
+                    .fontSize(25)
+                }
+
+                Image($r('app.media.ic_public_search_filled'))
+                  .width(30)
+                  .onClick(()=>{
+                    this.pageStack.pushPath({name:'CitySearchPage'});
                   })
-                Text(this.currentCity.name)
-                  .fontSize(25)
+                if (this.cacheInfoMessage) {
+                  // 如果有离线信息，就显示它
+                  Text(this.cacheInfoMessage)
+                    .fontSize(12)
+                    .fontColor(Color.White)
+                    .backgroundColor(Color.Red) // 用醒目的颜色提醒用户
+                    .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                    .borderRadius(4)
+                } else {
+                  // 否则，正常显示在线更新时间
+                  Text(`更新于${this.updateTime}`)
+                }
               }
+              .width('100%')
+              .justifyContent(FlexAlign.SpaceBetween)
+              .padding({left:20,right:20})
+              Row(){
+                Column({space:10}){
+                  Text(ICON_MAP[this.nowWeather.icon])
+                    .fontSize(40)
+                    .fontFamily('myfont')
+                    .margin(10)
+                  Text(this.nowWeather.text)
+                    .fontSize(20)
+                  Text('体感温度: '+this.nowWeather.feelsLike+'°')
+                    .fontSize(20)
+                }
+                Text('温度: '+this.nowWeather.temp+'°')
+                  .fontSize(20)
+              }
+              .width('100%')
+              .justifyContent(FlexAlign.SpaceEvenly)
 
-              Image($r('app.media.ic_public_search_filled'))
-                .width(30)
-                .onClick(()=>{
-                  this.pageStack.pushPath({name:'CitySearchPage'});
-                })
-              if (this.cacheInfoMessage) {
-                // 如果有离线信息，就显示它
-                Text(this.cacheInfoMessage)
-                  .fontSize(12)
-                  .fontColor(Color.White)
-                  .backgroundColor(Color.Red) // 用醒目的颜色提醒用户
-                  .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-                  .borderRadius(4)
-              } else {
-                // 否则，正常显示在线更新时间
-                Text(`更新于${this.updateTime}`)
-              }
-            }
-            .width('100%')
-            .justifyContent(FlexAlign.SpaceBetween)
-            .padding({left:20,right:20})
-            Row(){
               Column({space:10}){
-                Text(ICON_MAP[this.nowWeather.icon])
-                  .fontSize(40)
-                  .fontFamily('myfont')
-                  .margin(10)
-                Text(this.nowWeather.text)
-                  .fontSize(20)
-                Text('体感温度: '+this.nowWeather.feelsLike+'°')
-                  .fontSize(20)
+                Row(){
+                  Text('湿度')
+                    .fontSize(20)
+                  Text(this.nowWeather.humidity+'%')
+                    .fontSize(20)
+                }
+                .width('100%')
+                .justifyContent(FlexAlign.SpaceAround)
+                Row(){
+                  Text('风向/风力')
+                    .fontSize(20)
+                  Text(this.nowWeather.windDir+this.nowWeather.windScale+'级')
+                    .fontSize(20)
+                }
+                .width('100%')
+                .justifyContent(FlexAlign.SpaceAround)
+                Row(){
+                  Text('气压')
+                    .fontSize(20)
+                  Text(this.nowWeather.pressure+'hPa')
+                    .fontSize(20)
+                }
+                .width('100%')
+                .justifyContent(FlexAlign.SpaceAround)
+                Row(){
+                  Text('能见度')
+                    .fontSize(20)
+                  Text(this.nowWeather.vis+'km')
+                    .fontSize(20)
+                }
+                .width('100%')
+                .justifyContent(FlexAlign.SpaceAround)
+
               }
-              Text('温度: '+this.nowWeather.temp+'°')
-                .fontSize(20)
+              .borderRadius(20)
+              .backgroundColor('#ffd2dbf0')
+              .padding(20)
+              .margin({top:10})
             }
-            .width('100%')
-            .justifyContent(FlexAlign.SpaceEvenly)
+            .borderRadius(20)
+            .padding(10)
 
-            Column({space:10}){
-              Row(){
-                Text('湿度')
-                  .fontSize(20)
-                Text(this.nowWeather.humidity+'%')
-                  .fontSize(20)
-              }
-              .width('100%')
-              .justifyContent(FlexAlign.SpaceAround)
-              Row(){
-                Text('风向/风力')
-                  .fontSize(20)
-                Text(this.nowWeather.windDir+this.nowWeather.windScale+'级')
-                  .fontSize(20)
-              }
-              .width('100%')
-              .justifyContent(FlexAlign.SpaceAround)
-              Row(){
-                Text('气压')
-                  .fontSize(20)
-                Text(this.nowWeather.pressure+'hPa')
-                  .fontSize(20)
-              }
-              .width('100%')
-              .justifyContent(FlexAlign.SpaceAround)
-              Row(){
-                Text('能见度')
-                  .fontSize(20)
-                Text(this.nowWeather.vis+'km')
-                  .fontSize(20)
-              }
-              .width('100%')
-              .justifyContent(FlexAlign.SpaceAround)
+            //中间的24h天气预报
+            Column() {
+              Text("未来24小时预报")
+                .fontSize(16)
+                .fontWeight(FontWeight.Medium)
+                .width('100%')
+                .textAlign(TextAlign.Start)
+                .margin({ bottom: 5 })
 
+              // 关键：使用List并设置其方向为横向
+              List({ space: 10 }) { // space是每个元素间的间距
+                ForEach(this.hourlyForecasts, (item: HourlyForecast) => {
+                  ListItem() {
+                    // 这里是每个小时预报项的UI
+                    Column({ space: 8 }) {
+                      // 时间，例如 "14:00"
+                      Text(formatTime(new Date(item.fxTime)))
+                        .fontSize(14)
+                      // 天气图标
+                      Text(ICON_MAP[item.icon])
+                        .fontFamily('myfont')
+                        .fontSize(24)
+                      // 温度
+                      Text(`${item.temp}°`)
+                        .fontSize(16)
+                        .fontWeight(FontWeight.Medium)
+                    }
+                    .width(50) // 给每一项一个固定的宽度
+                    .padding({ top: 10, bottom: 10 })
+                  }
+                })
+              }
+              .listDirection(Axis.Horizontal) // <-- 设置列表为水平方向！
+              .edgeEffect(EdgeEffect.Spring)   // 设置滚动到边缘时的回弹效果
+              .width('100%')
+              .scrollBar(BarState.Off)
+
+            }
+            .padding(20)
+            .borderRadius(20)
+            .backgroundColor('#ffd2dbf0') // 使用您喜欢的主题色
+            .margin({ left:10,right:10 }) // 与其他卡片保持间距
+            .height(150)
+
+            //未来三天天气
+            List({space:10}){
+              ForEach(this.forecastDays,(item:DailyForecast)=>{
+                ListItem(){
+                  Row(){
+                    Text(item.fxDate)
+                      .fontSize(20)
+                    Text(formatForecastDate(item.fxDate))
+                      .fontSize(20)
+                    Text(ICON_MAP[item.iconDay])
+                      .fontSize(20)
+                      .fontFamily('myfont')
+
+                    Text(`${item.tempMin}° / ${item.tempMax}°`)
+                      .fontSize(20)
+                  }
+                  .justifyContent(FlexAlign.SpaceAround)
+                  .width('100%')
+                }
+              })
             }
             .borderRadius(20)
             .backgroundColor('#ffd2dbf0')
             .padding(20)
-            .margin({top:10})
-          }
-          .borderRadius(20)
-          // .backgroundColor('#ffd2dbf0')
-          .padding(10)
-
-          //中间的24h天气预报
-          Column() {
-            Text("未来24小时预报")
-              .fontSize(16)
-              .fontWeight(FontWeight.Medium)
-              .width('100%')
-              .textAlign(TextAlign.Start)
-              .margin({ bottom: 5 })
-
-            // 关键：使用List并设置其方向为横向
-            List({ space: 10 }) { // space是每个元素间的间距
-              ForEach(this.hourlyForecasts, (item: HourlyForecast) => {
-                ListItem() {
-                  // 这里是每个小时预报项的UI
-                  Column({ space: 8 }) {
-                    // 时间，例如 "14:00"
-                    Text(formatTime(new Date(item.fxTime)))
-                      .fontSize(14)
-                    // 天气图标
-                    Text(ICON_MAP[item.icon])
-                      .fontFamily('myfont')
-                      .fontSize(24)
-                    // 温度
-                    Text(`${item.temp}°`)
-                      .fontSize(16)
-                      .fontWeight(FontWeight.Medium)
-                  }
-                  .width(50) // 给每一项一个固定的宽度
-                  .padding({ top: 10, bottom: 10 })
-                }
-              })
-            }
-            .listDirection(Axis.Horizontal) // <-- 设置列表为水平方向！
-            .edgeEffect(EdgeEffect.Spring)   // 设置滚动到边缘时的回弹效果
-            .width('100%')
+            .margin({left:10,right:10,top:10})
+            .height(130)
             .scrollBar(BarState.Off)
 
+            //底部空气质量和生活指数
+            this.AirQualityCard();
+            this.LivingIndicesCard();
+
           }
-          .padding(20)
-          .borderRadius(20)
-          .backgroundColor('#ffd2dbf0') // 使用您喜欢的主题色
-          .margin({left: 10, right: 10}) // 与其他卡片保持间距
-          .height(150)
-
-          //未来三天天气
-          List({space:10}){
-            ForEach(this.forecastDays,(item:DailyForecast)=>{
-              ListItem(){
-                Row(){
-                  Text(item.fxDate)
-                    .fontSize(20)
-                  Text(formatForecastDate(item.fxDate))
-                    .fontSize(20)
-                  Text(ICON_MAP[item.iconDay])
-                    .fontSize(20)
-                    .fontFamily('myfont')
-
-                  Text(`${item.tempMin}° / ${item.tempMax}°`)
-                    .fontSize(20)
-                }
-                .justifyContent(FlexAlign.SpaceAround)
-                .width('100%')
-              }
-            })
-          }
-          .borderRadius(20)
-          .backgroundColor('#ffd2dbf0')
-          .padding(20)
-          .margin(10)
-
-          //底部空气质量和生活指数
-          this.AirQualityCard();
-          this.LivingIndicesCard();
-
+          // .height('100%')
+          .width('100%')
+          .expandSafeArea([SafeAreaType.SYSTEM],[SafeAreaEdge.BOTTOM])
         }
-        // .height('100%')
-        .width('100%')
-        .expandSafeArea([SafeAreaType.SYSTEM],[SafeAreaEdge.BOTTOM])
+        .scrollBar(BarState.Off)
+
       }
       .onRefreshing(()=>{
         this.handleRefresh();
