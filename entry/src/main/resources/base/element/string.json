@@ -15,6 +15,30 @@
     {
       "name": "location_reason",
       "value": "获取位置来得到天气预报"
+    },
+    {
+      "name": "WeatherWidgetAbility_desc",
+      "value": "form_description"
+    },
+    {
+      "name": "WeatherWidgetAbility_label",
+      "value": "form_label"
+    },
+    {
+      "name": "Weatherwidget_desc",
+      "value": "This is a weather service widget."
+    },
+    {
+      "name": "Weatherwidget_display_name",
+      "value": "Weatherwidget"
+    },
+    {
+      "name": "card_title",
+      "value": "Title"
+    },
+    {
+      "name": "introduction",
+      "value": "Introduction"
     }
   ]
 }

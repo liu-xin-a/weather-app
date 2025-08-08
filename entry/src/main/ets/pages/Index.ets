@@ -294,7 +294,7 @@ struct Index {
       this.get3dForecast(),
       this.get24hForecast(),
       this.getAirQuality(),
-    this.getLivingIndices()
+      this.getLivingIndices()
     ]);
     // 3.等待两秒之后 ，结束刷新，隐藏加载动画
     setTimeout(() => {
@@ -436,20 +436,48 @@ struct Index {
               onLocationClick: (): Promise<void> => this.getLocation(),
               onSearchClick: () => this.pageStack.pushPath({ name: 'CitySearchPage' })
             })
+              .animation({ duration: 600, curve: Curve.EaseInOut }) // 动画持续600毫秒，缓入缓出
 
             //中间的24h天气预报
             HourlyForecastView({
               hourlyForecasts: this
                 .hourlyForecasts })
+              .animation({ duration: 600, curve: Curve.EaseInOut, delay: 100 })
 
             // 3. 未来几天预报模块
             DailyForecastView({ forecastDays: this.forecastDays })
+              .animation({ duration: 600, curve: Curve.EaseInOut, delay: 200 })
 
             // 4. 空气质量模块
             AirQualityCard({ airQuality: this.airQuality })
+              .animation({ duration: 600, curve: Curve.EaseInOut, delay: 300 })
 
             // 5. 生活指数模块
             LivingIndicesCard({ livingIndices: this.livingIndices })
+              .animation({ duration: 600, curve: Curve.EaseInOut, delay: 400 })
+
+            Button(`拨打电话`)
+              .onClick(() => {
+                let phoneNumber: string = '10086';
+
+                let wantInfo: Want = {
+                  action: 'ohos.want.action.DIAL',
+                  entities: ['entity.system.dial'],
+                  uri: 'tel:10086'
+                };
+                // UIAbilityContext 获取方式：
+                // 在 UIAbility 中用 this.context
+                // 在普通组件中通过 getContext(this) 获取
+                let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+
+                context.startAbility(wantInfo)
+                  .then(() => {
+                    console.log('已启动拨号器');
+                  })
+                  .catch((err:Error) => {
+                    console.error('启动拨号器失败', JSON.stringify(err));
+                  });
+              })
 
           }
           .width('100%')
