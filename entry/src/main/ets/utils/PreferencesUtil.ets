@@ -10,14 +10,14 @@ const PREF_KEY_CITY_INFO = 'current_city_info'; // 定义存储城市信息的�
 /**
  * 获取一个专属于本应用的 preferences 实例
  */
-async function getPreferences(context: common.UIAbilityContext): Promise<preferences.Preferences> {
+async function getPreferences(context: common.Context): Promise<preferences.Preferences> {
   return await preferences.getPreferences(context, PREF_FILE_NAME);
 }
 
 /**
  * 工具函数一：将用户选择的城市信息保存到闪存
  */
-export async function saveCityToPreferences(context: common.UIAbilityContext, city: CurrentCityInfo) {
+export async function saveCityToPreferences(context: common.Context, city: CurrentCityInfo) {
   try {
     const prefs = await getPreferences(context);
     // 因为 preferences 只能存字符串等基础类型，所以我们必须先把对象转换成JSON字符串
@@ -33,7 +33,7 @@ export async function saveCityToPreferences(context: common.UIAbilityContext, ci
 /**
  * 工具函数二：从闪存中读取上次保存的城市信息
  */
-export async function loadCityFromPreferences(context: common.UIAbilityContext): Promise<CurrentCityInfo | null> {
+export async function loadCityFromPreferences(context: common.Context): Promise<CurrentCityInfo | null> {
   try {
     const prefs = await getPreferences(context);
     // 读取时，也要先以字符串的形式读出来
