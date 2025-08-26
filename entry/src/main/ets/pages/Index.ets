@@ -456,28 +456,6 @@ struct Index {
             LivingIndicesCard({ livingIndices: this.livingIndices })
               .animation({ duration: 600, curve: Curve.EaseInOut, delay: 400 })
 
-            Button(`拨打电话`)
-              .onClick(() => {
-                let phoneNumber: string = '10086';
-
-                let wantInfo: Want = {
-                  action: 'ohos.want.action.dial',
-                  entities: ['entity.system.dialer'],
-                  uri: 'tel:13800138000'
-                };
-                // UIAbilityContext 获取方式：
-                // 在 UIAbility 中用 this.context
-                // 在普通组件中通过 getContext(this) 获取
-                let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
-
-                context.startAbility(wantInfo)
-                  .then(() => {
-                    console.log('已启动拨号器');
-                  })
-                  .catch((err:Error) => {
-                    console.error('启动拨号器失败', JSON.stringify(err));
-                  });
-              })
 
           }
           .width('100%')
