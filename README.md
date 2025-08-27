@@ -69,7 +69,6 @@
 ```
 /entry/src/main/ets
 ├── common          # 存放常量 (Constants.ets)
-├── controller      # (可选) ViewModel/Controller 层
 ├── entryability    # 应用主入口 (EntryAbility.ets)
 ├── model           # 数据模型 (WeatherModels.ets)
 ├── pages           # 页面UI (Index.ets, CitySearchPage.ets)
