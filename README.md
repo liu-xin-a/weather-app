@@ -60,7 +60,7 @@
 2.  **打开项目**:
     使用最新版本的 **DevEco Studio** 打开项目。
 3.  **配置API Key**:
-    打开 `entry/src/main/ets/common/Constants.ets` 文件，将 `QWEATHER_API_KEY` 的值替换为您自己从和风天气开发者平台申请的 Key。
+    打开 `entry/src/main/ets/common/Constants.ets` 文件，将 `QWEATHER_API_KEY` 的值替换为您自己从和风天气开发者平台申请的 Key，以及替换成自己的API host。
 4.  **运行**:
     连接真机或模拟器，点击运行按钮。
 
